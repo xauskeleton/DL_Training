@@ -8,7 +8,15 @@ from src.dataset import get_dataloaders
 from src.engine import evaluate, fit
 from src.models import build_model
 from src.sanity_check import check_initial_loss, check_overfit_single_batch
-from src.utils import count_parameters, get_device, load_config, set_seed, summarize_seeds
+from src.utils import (
+    build_optimizer,
+    build_scheduler,
+    count_parameters,
+    get_device,
+    load_config,
+    set_seed,
+    summarize_seeds,
+)
 from src.visualize import plot_confusion_matrix, plot_learning_curves
 
 
@@ -47,11 +55,11 @@ def main():
         # 2. Khởi tạo mô hình, hàm mất mát và bộ tối ưu
         model = build_model(config).to(device)
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(
-            model.parameters(),
-            lr=config["train"]["lr"],
-            momentum=config["train"].get("momentum", 0.9),
-            weight_decay=config["train"].get("weight_decay", 0.0),
+        optimizer = build_optimizer(model, config)
+        scheduler = build_scheduler(
+            optimizer=optimizer,
+            config=config,
+            epochs=config["train"]["epochs"],
         )
 
         # 3. Chạy Sanity Check ở seed đầu tiên trước khi huấn luyện thật
@@ -79,6 +87,7 @@ def main():
             patience=config["train"]["patience"],
             checkpoint_path=ckpt_path,
             log_dir=log_dir,
+            scheduler=scheduler,
         )
 
         # 5. Đánh giá đúng 1 lần trên tập Test bằng checkpoint tốt nhất

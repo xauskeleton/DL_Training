@@ -13,10 +13,21 @@ model:
 train:
   seeds: [42, 43, 44]        # Run nhẹ chạy 3 seed; run nặng chạy 1 seed [42]
   epochs: 30
-  lr: 0.1
-  momentum: 0.9
-  weight_decay: 0.0
   patience: 5                # Early stopping theo Validation metric
+
+  optimizer:
+    name: "sgd"              # "sgd", "adam", "adamw", "rmsprop"
+    lr: 0.1
+    momentum: 0.9            # Dùng cho sgd / rmsprop
+    weight_decay: 0.0        # Hệ số suy hao trọng số (5e-4 cho SGD ResNet, 0.05 cho AdamW)
+    nesterov: false
+
+  scheduler:
+    name: "cosine"           # "none", "step", "multistep", "cosine", "warmup_cosine", "plateau"
+    warmup_epochs: 3         # Dùng cho warmup_cosine
+    min_lr: 0.0001           # LR tối thiểu cho cosine
+    step_size: 10            # Dùng cho step
+    gamma: 0.1               # Hệ số giảm lr
 
 output:
   checkpoint_dir: "./outputs/checkpoints"

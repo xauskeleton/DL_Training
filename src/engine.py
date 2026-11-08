@@ -128,6 +128,7 @@ def fit(
         "train_acc": [],
         "val_loss": [],
         "val_acc": [],
+        "lr": [],
         "epoch_time": [],
     }
 
@@ -139,14 +140,20 @@ def fit(
         )
         val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
 
+        current_lr = optimizer.param_groups[0]["lr"]
+
         if scheduler is not None:
-            scheduler.step()
+            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(val_loss if scheduler.mode == "min" else val_acc)
+            else:
+                scheduler.step()
 
         elapsed = time.perf_counter() - start_time
         history["train_loss"].append(train_loss)
         history["train_acc"].append(train_acc)
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
+        history["lr"].append(current_lr)
         history["epoch_time"].append(elapsed)
 
         if writer is not None:
@@ -154,14 +161,16 @@ def fit(
             writer.add_scalar("Loss/val", val_loss, epoch)
             writer.add_scalar("Accuracy/train", train_acc, epoch)
             writer.add_scalar("Accuracy/val", val_acc, epoch)
+            writer.add_scalar("LR", current_lr, epoch)
 
         print(
             f"Epoch [{epoch:02d}/{epochs:02d}] ({elapsed:.2f}s) | "
+            f"LR: {current_lr:.6f} | "
             f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.2f}% | "
             f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.2f}%"
         )
 
-        if early_stopping.step(val_acc, epoch, model, optimizer):
+        if early_stopping.step(val_acc, epoch, model, optimizer, scheduler=scheduler):
             print(
                 f"--> Early Stopping tại epoch {epoch}! "
                 f"Best Val Acc = {early_stopping.best_score:.2f}% (epoch {early_stopping.best_epoch})"
@@ -171,7 +180,7 @@ def fit(
     if writer is not None:
         writer.close()
 
-    load_checkpoint(model, checkpoint_path, device)
+    load_checkpoint(model, checkpoint_path, device, optimizer=optimizer, scheduler=scheduler)
     history["best_epoch"] = [early_stopping.best_epoch]
     history["best_val_acc"] = [early_stopping.best_score]
     return history

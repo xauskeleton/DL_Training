@@ -12,11 +12,13 @@ def plot_learning_curves(
     save_path: str = "outputs/figures/learning_curves.png",
     title: str = "Train vs Validation Curves",
 ) -> None:
-    """Vẽ và lưu biểu đồ đường Loss và Accuracy của tập Train và Validation."""
+    """Vẽ và lưu biểu đồ đường Loss, Accuracy và Learning Rate Schedule."""
     Path(os.path.dirname(save_path)).mkdir(parents=True, exist_ok=True)
     epochs = range(1, len(history["train_loss"]) + 1)
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    has_lr = "lr" in history and len(history["lr"]) == len(history["train_loss"])
+    num_plots = 3 if has_lr else 2
+    fig, axes = plt.subplots(1, num_plots, figsize=(16, 4.5) if has_lr else (12, 4.5))
 
     axes[0].plot(epochs, history["train_loss"], label="Train Loss", marker="o", markersize=3)
     axes[0].plot(epochs, history["val_loss"], label="Val Loss", marker="s", markersize=3)
@@ -33,6 +35,15 @@ def plot_learning_curves(
     axes[1].set_ylabel("Accuracy (%)")
     axes[1].legend()
     axes[1].grid(True, linestyle="--", alpha=0.5)
+
+    if has_lr:
+        axes[2].plot(epochs, history["lr"], label="Learning Rate", color="tab:green", marker="^", markersize=3)
+        axes[2].set_title(f"{title} - LR Schedule")
+        axes[2].set_xlabel("Epoch")
+        axes[2].set_ylabel("Learning Rate")
+        axes[2].set_yscale("log")
+        axes[2].legend()
+        axes[2].grid(True, linestyle="--", alpha=0.5)
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
