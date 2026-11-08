@@ -1,0 +1,25 @@
+project_name: "template_project"
+
+data:
+  data_dir: "./data/raw"
+  batch_size: 128
+  val_ratio: 0.1
+  num_classes: 10
+
+model:
+  name: "base_model"
+  init_mode: "default"
+
+train:
+  seeds: [42, 43, 44]        # Run nhẹ chạy 3 seed; run nặng chạy 1 seed [42]
+  epochs: 30
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 0.0
+  patience: 5                # Early stopping theo Validation metric
+
+output:
+  checkpoint_dir: "./outputs/checkpoints"
+  log_dir: "./outputs/logs"
+  figure_dir: "./outputs/figures"
+

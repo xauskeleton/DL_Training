@@ -1,0 +1,35 @@
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Datasets & large raw files (do not commit raw datasets)
+**/data/raw/
+**/data/processed/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Checkpoints & model weights
+**/*.pt
+**/*.pth
+**/*.ckpt
+**/*.onnx
+**/*.bin
+**/*.safetensors
+
+# TensorBoard & W&B logs
+**/runs/
+**/logs/
+wandb/
+
