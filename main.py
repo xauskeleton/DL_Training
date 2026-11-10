@@ -2,7 +2,6 @@
 import argparse
 import os
 import torch.nn as nn
-import torch.optim as optim
 
 from src.dataset import get_dataloaders
 from src.engine import evaluate, fit

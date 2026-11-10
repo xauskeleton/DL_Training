@@ -1,5 +1,5 @@
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -10,7 +10,7 @@ from src.utils import EarlyStopping, load_checkpoint
 
 
 def train_one_epoch(
-    model: nn.Module,
+    model: Any,
     loader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -20,9 +20,9 @@ def train_one_epoch(
 ) -> Tuple[float, float]:
     """
     Chạy 1 epoch huấn luyện chuẩn.
+    - Hỗ trợ cả Bản 1 (Tensor + Autograd qua step_sgd) và Bản 2 (nn.Module qua optimizer.step).
     - Bật model.train() để BatchNorm/Dropout hoạt động ở chế độ huấn luyện.
-    - Xoá gradient cũ (optimizer.zero_grad()) trước mỗi batch.
-    - Hỗ trợ FP32 mặc định (use_amp=False) và Mixed Precision khi làm bài so sánh ở P2.
+    - Xoá gradient cũ trước mỗi batch.
     """
     model.train()
     total_loss = 0.0
@@ -33,20 +33,28 @@ def train_one_epoch(
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        optimizer.zero_grad()
-
-        if use_amp and scaler is not None and device.type == "cuda":
-            with torch.autocast(device_type="cuda", dtype=torch.float16):
+        if hasattr(model, "step_sgd") and hasattr(model, "compute_loss"):
+            # Bản 1: Tensor + Autograd thuần
+            logits = model(inputs)
+            loss = model.compute_loss(logits, targets)
+            loss.backward()
+            current_lr = optimizer.param_groups[0]["lr"] if optimizer is not None else 0.1
+            model.step_sgd(current_lr)
+        else:
+            # Bản 2: Thư viện chuẩn PyTorch
+            optimizer.zero_grad()
+            if use_amp and scaler is not None and device.type == "cuda":
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    logits = model(inputs)
+                    loss = criterion(logits, targets)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
                 logits = model(inputs)
                 loss = criterion(logits, targets)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            logits = model(inputs)
-            loss = criterion(logits, targets)
-            loss.backward()
-            optimizer.step()
+                loss.backward()
+                optimizer.step()
 
         batch_size = inputs.size(0)
         total_loss += loss.item() * batch_size
@@ -61,7 +69,7 @@ def train_one_epoch(
 
 @torch.no_grad()
 def evaluate(
-    model: nn.Module,
+    model: Any,
     loader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
@@ -83,7 +91,10 @@ def evaluate(
         targets = targets.to(device)
 
         logits = model(inputs)
-        loss = criterion(logits, targets)
+        if hasattr(model, "compute_loss"):
+            loss = model.compute_loss(logits, targets)
+        else:
+            loss = criterion(logits, targets)
 
         batch_size = inputs.size(0)
         total_loss += loss.item() * batch_size
@@ -100,7 +111,7 @@ def evaluate(
 
 
 def fit(
-    model: nn.Module,
+    model: Any,
     train_loader: DataLoader,
     val_loader: DataLoader,
     criterion: nn.Module,

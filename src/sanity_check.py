@@ -1,3 +1,4 @@
+from typing import Any
 import copy
 import math
 import torch
@@ -6,7 +7,7 @@ from torch.utils.data import DataLoader
 
 
 def check_initial_loss(
-    model: nn.Module,
+    model: Any,
     loader: DataLoader,
     criterion: nn.Module,
     num_classes: int,
@@ -24,7 +25,10 @@ def check_initial_loss(
 
     with torch.no_grad():
         logits = model(images)
-        init_loss = criterion(logits, labels).item()
+        if hasattr(model, "compute_loss"):
+            init_loss = model.compute_loss(logits, labels).item()
+        else:
+            init_loss = criterion(logits, labels).item()
 
     expected_loss = math.log(num_classes)
     print(
@@ -35,7 +39,7 @@ def check_initial_loss(
 
 
 def check_overfit_single_batch(
-    model: nn.Module,
+    model: Any,
     loader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
@@ -50,9 +54,14 @@ def check_overfit_single_batch(
     được batch này: loss tiến về ~0 và accuracy đạt 100%.
     Dùng bản sao (deepcopy) của model để không làm ảnh hưởng trọng số gốc.
     """
-    temp_model = copy.deepcopy(model).to(device)
+    temp_model = copy.deepcopy(model)
+    if hasattr(temp_model, "to"):
+        temp_model.to(device)
     temp_model.train()
-    optimizer = torch.optim.SGD(temp_model.parameters(), lr=lr, momentum=0.9)
+
+    is_tensor_model = hasattr(temp_model, "step_sgd") and hasattr(temp_model, "compute_loss")
+    if not is_tensor_model:
+        optimizer = torch.optim.SGD(temp_model.parameters(), lr=lr, momentum=0.9)
 
     images, labels = next(iter(loader))
     images = images[:num_samples].to(device)
@@ -61,11 +70,17 @@ def check_overfit_single_batch(
     final_loss = 0.0
     final_acc = 0.0
     for _ in range(steps):
-        optimizer.zero_grad()
-        logits = temp_model(images)
-        loss = criterion(logits, labels)
-        loss.backward()
-        optimizer.step()
+        if is_tensor_model:
+            logits = temp_model(images)
+            loss = temp_model.compute_loss(logits, labels)
+            loss.backward()
+            temp_model.step_sgd(lr)
+        else:
+            optimizer.zero_grad()
+            logits = temp_model(images)
+            loss = criterion(logits, labels)
+            loss.backward()
+            optimizer.step()
 
         final_loss = loss.item()
         preds = logits.argmax(dim=1)

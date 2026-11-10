@@ -1,0 +1,30 @@
+project_name: "p1_init_zeros"
+
+data:
+  data_dir: "./data/raw"
+  batch_size: 128
+  val_ratio: 0.1
+  num_classes: 10
+
+model:
+  name: "mlp"
+  hidden_1: 256
+  hidden_2: 128
+  init_mode: "zeros"         # Khởi tạo toàn bộ W=0, b=0
+
+train:
+  seeds: [42]
+  epochs: 15
+  patience: 5
+
+  optimizer:
+    name: "sgd"
+    lr: 0.1
+
+  scheduler:
+    name: "none"
+
+output:
+  checkpoint_dir: "./outputs/checkpoints_zeros"
+  log_dir: "./outputs/logs_zeros"
+  figure_dir: "./outputs/figures_zeros"

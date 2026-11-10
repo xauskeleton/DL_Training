@@ -1,4 +1,4 @@
-project_name: "template_project"
+project_name: "p1_mnist_mlp"
 
 data:
   data_dir: "./data/raw"
@@ -7,30 +7,27 @@ data:
   num_classes: 10
 
 model:
-  name: "base_model"
-  init_mode: "default"
+  name: "mlp"                # "mlp" (Bản nn.Module) hoặc "tensor_mlp" (Bản Tensor thuần)
+  hidden_1: 256
+  hidden_2: 128
+  init_mode: "default"       # "default", "zeros", "large"
 
 train:
-  seeds: [42, 43, 44]        # Run nhẹ chạy 3 seed; run nặng chạy 1 seed [42]
+  seeds: [42, 43, 44]        # Chạy 3 seed theo quy tắc lộ trình để lấy mean ± std
   epochs: 30
   patience: 5                # Early stopping theo Validation metric
 
   optimizer:
-    name: "sgd"              # "sgd", "adam", "adamw", "rmsprop"
+    name: "sgd"
     lr: 0.1
-    momentum: 0.9            # Dùng cho sgd / rmsprop
-    weight_decay: 0.0        # Hệ số suy hao trọng số (5e-4 cho SGD ResNet, 0.05 cho AdamW)
+    momentum: 0.9
+    weight_decay: 0.0
     nesterov: false
 
   scheduler:
-    name: "cosine"           # "none", "step", "multistep", "cosine", "warmup_cosine", "plateau"
-    warmup_epochs: 3         # Dùng cho warmup_cosine
-    min_lr: 0.0001           # LR tối thiểu cho cosine
-    step_size: 10            # Dùng cho step
-    gamma: 0.1               # Hệ số giảm lr
+    name: "none"             # P1 chạy SGD cố định
 
 output:
   checkpoint_dir: "./outputs/checkpoints"
   log_dir: "./outputs/logs"
   figure_dir: "./outputs/figures"
-
